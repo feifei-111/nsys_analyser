@@ -39,9 +39,9 @@ class Node:
             return True
         return any(child.has(text) for child in self.children)
 
-def create_nodes(json_name):
+def create_nodes(json_path):
     nodes = []
-    with open(f"/Users/wuzhanfei/Downloads/{json_name}.json", "r") as f:
+    with open(json_path, "r") as f:
         lines = f.readlines()
         for line in lines:
             nsys_json = json.loads(line)
