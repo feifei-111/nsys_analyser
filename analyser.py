@@ -1,45 +1,52 @@
 from .utils import DefaultDict as ddict
-from .utils import line_printer, LINE_WIDTH
+from .utils import line_printer, LINE_WIDTH, sort_on_values
 
 
-def find_op_base(base_events):
-    events = []
-    for event in base_events:
-        if event.has("interpreter_core_run"):
-            events.extend(event.find_all("interpreter_core_run"))
-        else:
-            events.append(event)
-    return events
+def analyse_ops_with_multi_thread(tree):
+    op_time_cost = {}
+    op_counter = {}
+    for op_name in tree.op_set:
 
+        start_times = [op.start for op in tree.nodes if op.text == op_name and op.is_op()]
+        end_times = [op.end for op in tree.nodes if op.text == op_name and op.is_op()]
 
-def analyse_ops_under_named_event(root, name):
-    base_events = root.find_all(name)
-    total_time = sum(base_event.time_cost for base_event in base_events)
+        start_time_idx = 0
+        end_time_idx = 0
 
-    events = find_op_base(base_events)
+        last_start = None
+        counter = 0
 
-    op_time_cost_map = ddict(0)
-    op_counter = ddict(0)
+        total_time_cost = 0
 
-    for event in events:
-        for op in event.children:
-            op_time_cost_map[op.text] += op.time_cost
-            op_counter[op.text] += 1
+        while start_time_idx < len(start_times) or end_time_idx < len(end_times):
+            start_t = start_times[start_time_idx] if start_time_idx < len(start_times) else float("inf")
+            end_t = end_times[end_time_idx] if end_time_idx < len(end_times) else float("inf")
 
-    print("{k:<40s}: time_cost = {v:<12f} ms,   {ratio:.2f}%".format(k="total", v=total_time / 1000000, ratio=100))
+            if start_t < end_t:
+                if counter == 0:
+                    last_start = start_t
+                counter += 1
+                start_time_idx += 1
+            else:
+                counter -= 1
+                if counter == 0:
+                    time_cost = end_t - last_start
+                    total_time_cost += time_cost
+                    last_start = None
+                end_time_idx += 1
+
+        op_time_cost[op_name] = total_time_cost
+        op_counter[op_name] = len(start_times)
+
+    print("{k:<40s}: time_cost = {v:<12f} ms".format(k="total", v=tree.time_cost / 1000000))
     print("-" * LINE_WIDTH)
-    for k, v in op_time_cost_map.sort_on_values():
-        print("{k:<40s}: count = {count:<5d}, time_cost = {v:<12f} ms,   {ratio:.2f}%".format(count=op_counter[k], k=k, v=v / 1000000, ratio=v / total_time * 100))
+    for k, v in sort_on_values(op_time_cost):
+        print("{k:<40s}: count = {count:<5d}, time_cost = {v:<12f} ms,   {ratio:.2f}%".format(count=op_counter[k], k=k, v=v / 1000000, ratio=v / tree.time_cost * 100))
 
 
-def show_op_list(root, name):
-    base_events = root.find_all(name)
-    events = find_op_base(base_events)
-    first_one = True
-
-    for event in events:
-        event.pprint(level=1)
-        if not first_one:
-            print("~" * LINE_WIDTH + "\n")
-        else:
-            first_one = False
+def show_op_list(tree):
+    for node in tree.nodes:
+        if node.is_op():
+            print("{text:<40s}: time_cost = {time_cost:<8d} ms,  start = {start:<12d},  end = {end:<12d}".format(
+                text=node.text, time_cost=node.time_cost, start=node.start, end=node.end
+            ))

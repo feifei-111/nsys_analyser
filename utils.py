@@ -9,18 +9,31 @@ class DefaultDict:
         self.default = default
         self.dict = dict()
 
+    def get_default(self):
+        if callable(self.default):
+            return self.default()
+        else:
+            return self.default
+
     def __getitem__(self, key):
         if key not in self.dict:
-            self.dict[key] = self.default
+            self.dict[key] = self.get_default()
         return self.dict[key]
     
     def __setitem__(self, key, value):
         self.dict[key] = value
+    
+    def has(key):
+        return key in self.dict
 
-    def sort_on_values(self, key=None):
-        if key is None:
-            key = lambda x: -x[1]
-        return sorted(self.dict.items(), key=key)
+    def keys(self):
+        return self.dict.keys()
+    
+    def values(self):
+        return self.dict.values()
+
+    def items(self):
+        return self.dict.items()
 
 
 @contextmanager
@@ -30,3 +43,10 @@ def line_printer(title):
     print(format_str.format(left="=" * ((LINE_WIDTH - name_len) // 2), title=title, right="=" * ((LINE_WIDTH - name_len) // 2)))
     yield
     print("=" * LINE_WIDTH + "\n")
+
+
+def sort_on_values(dict_, key=None):
+    if key is None:
+        key = lambda x: -x[1]
+    return sorted(dict_.items(), key=key)
+
