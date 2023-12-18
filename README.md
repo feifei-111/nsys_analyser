@@ -9,7 +9,11 @@ from nsys_analyser.analyser import analyse_llama
 
 if __name__ == "__main__":
     target_step = "15"
-    nodes = create_nodes(json_path)
+    nodes = create_nodes("xxxxx.json")
     root = create_tree(nodes, target_step)
-    analyse_llama(root)
+    with line_printer("llama op status"):
+        analyse_ops_under_named_event(root, "llama")
+
+    with line_printer("llama op list"):
+        show_op_list(root, "llama")
 ```
