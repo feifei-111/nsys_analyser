@@ -3,8 +3,8 @@
 
 ```py
 import sys
-from nsys_json.parse_json import create_nodes, create_tree
-from nsys_json.analyser import analyse_llama
+from nsys_analyser.parse_json import create_nodes, create_tree
+from nsys_analyser.analyser import analyse_llama
 
 
 if __name__ == "__main__":
