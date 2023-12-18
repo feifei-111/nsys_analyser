@@ -15,7 +15,7 @@ class Node:
         return self.end - self.start
 
     def __repr__(self):
-        return f"text: {self.text}, start: {self.start}, end: {self.end}"
+        return "text: {text:<40s},  cost: {cost:<10d}, start: {start:<12d}, end: {end:<12d}".format(text=self.text, start=self.start, end=self.end, cost=self.time_cost)
     
     def pprint(self, level=-1, prefix=""):
         print(prefix + self.__repr__())

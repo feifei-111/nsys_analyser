@@ -2,16 +2,21 @@ from .utils import DefaultDict as ddict
 from .utils import line_printer, LINE_WIDTH
 
 
-def analyse_ops_under_named_event(root, name):
-    base_events = root.find_all(name)
-    total_time = sum(base_event.time_cost for base_event in base_events)
-
+def find_op_base(base_events):
     events = []
     for event in base_events:
         if event.has("interpreter_core_run"):
             events.extend(event.find_all("interpreter_core_run"))
         else:
             events.append(event)
+    return events
+
+
+def analyse_ops_under_named_event(root, name):
+    base_events = root.find_all(name)
+    total_time = sum(base_event.time_cost for base_event in base_events)
+
+    events = find_op_base(base_events)
 
     op_time_cost_map = ddict(0)
     op_counter = ddict(0)
@@ -27,6 +32,14 @@ def analyse_ops_under_named_event(root, name):
         print("{k:<40s}: count = {count:<5d}, time_cost = {v:<12f} ms,   {ratio:.2f}%".format(count=op_counter[k], k=k, v=v / 1000000, ratio=v / total_time * 100))
 
 
-@line_printer
-def analyse_llama(root):
-    analyse_ops_under_named_event(root, "llama")
+def show_op_list(root, name):
+    base_events = root.find_all(name)
+    events = find_op_base(base_events)
+    first_one = True
+
+    for event in events:
+        event.pprint(level=1)
+        if not first_one:
+            print("~" * LINE_WIDTH + "\n")
+        else:
+            first_one = False

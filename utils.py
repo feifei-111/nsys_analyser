@@ -1,4 +1,5 @@
 import functools
+from contextlib import contextmanager
 
 
 LINE_WIDTH = 100
@@ -22,15 +23,10 @@ class DefaultDict:
         return sorted(self.dict.items(), key=key)
 
 
-
-def line_printer(func):
-    @functools.wraps(func)
-    def inner(*args, **kwargs):
-        name_len = (len(func.__name__) + 8) // 2 * 2
-        format_str = "{left}{func_name:^" + str(name_len) + "s}{right}"
-        print(format_str.format(left="=" * ((LINE_WIDTH - name_len) // 2), func_name=func.__name__, right="=" * ((LINE_WIDTH - name_len) // 2)))
-        ret = func(*args, **kwargs)
-        print("=" * LINE_WIDTH + "\n")
-        return ret
-
-    return inner
+@contextmanager
+def line_printer(title):
+    name_len = (len(title) + 8) // 2 * 2
+    format_str = "{left}{title:^" + str(name_len) + "s}{right}"
+    print(format_str.format(left="=" * ((LINE_WIDTH - name_len) // 2), title=title, right="=" * ((LINE_WIDTH - name_len) // 2)))
+    yield
+    print("=" * LINE_WIDTH + "\n")
