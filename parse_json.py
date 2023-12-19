@@ -20,7 +20,7 @@ class Node:
         return self.end - self.start
 
     def __repr__(self):
-        return "text: {text:<40s},  cost: {cost:<10d}, start: {start:<12d}, end: {end:<12d}".format(text=self.text, start=self.start, end=self.end, cost=self.time_cost)
+        return "{text:<40s}: time_cost = {cost:<10s} us,  start = {start:<10d},  end = {end:<10d}".format(text=self.text, start=self.start, end=self.end, cost=str(self.time_cost/1000))
     
     def pprint(self, level=-1, prefix=""):
         print(prefix + self.__repr__())
@@ -156,6 +156,9 @@ def create_tree(nodes, target_step, filter=None):
 def is_static_op(node):
     return len(node.find_child("compute")) == 1 and len(node.find_child("infer_shape")) == 1
 
+def is_pir_op(node):
+    return "pd_op." in node.text
+
 def maybe_dynamic_op(node):
     return "dygraph" in node.text or "pybind_imperative_func" in node.text or "pybind_patch_func" in node.text
 
@@ -166,13 +169,18 @@ def is_other_op(node):
     )
 
 def maybe_op(node):
-    return is_static_op(node) or is_other_op(node) or maybe_dynamic_op(node)
+    return is_static_op(node) or is_other_op(node) or maybe_dynamic_op(node) or is_pir_op(node)
 
 
 def setup_op(root):
     if maybe_op(root):
         root.is_op = True
-        root.op_name = root.text.replace(" dygraph", "").replace(" pybind_imperative_func", "").replace(" pybind_patch_func", "")
+        if maybe_dynamic_op(root):
+            root.op_name = root.text.replace(" dygraph", "").replace(" pybind_imperative_func", "").replace(" pybind_patch_func", "")
+        elif is_pir_op(root):
+            root.op_name = root.text.replace("pd_op.", "")
+        else:
+            root.op_name = root.text
     else:
         for child in root.children:
             setup_op(child)

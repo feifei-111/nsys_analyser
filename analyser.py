@@ -38,15 +38,13 @@ def analyse_ops_with_multi_thread(tree):
         op_time_cost[op_name] = total_time_cost
         op_counter[op_name] = len(start_times)
 
-    print("{k:<40s}: time_cost = {v:<12f} ms".format(k="total", v=tree.time_cost / 1000000))
+    print("{k:<40s}: time_cost = {v:<10f} ms".format(k="total", v=tree.time_cost / 1000000))
     print("-" * LINE_WIDTH)
     for k, v in sort_on_values(op_time_cost):
-        print("{k:<40s}: count = {count:<5d}, time_cost = {v:<12f} ms,   {ratio:.2f}%".format(count=op_counter[k], k=k, v=v / 1000000, ratio=v / tree.time_cost * 100))
+        print("{k:<40s}: time_cost = {v:<10f} ms,  count = {count:<5d},  {ratio:.2f}%".format(count=op_counter[k], k=k, v=v / 1000000, ratio=v / tree.time_cost * 100))
 
 
 def show_op_list(tree):
     for node in tree.nodes:
         if node.is_op:
-            print("{text:<40s}: time_cost = {time_cost:<8d} ms,  start = {start:<12d},  end = {end:<12d}".format(
-                text=node.text, time_cost=node.time_cost, start=node.start, end=node.end
-            ))
+            print(str(node))
