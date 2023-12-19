@@ -7,8 +7,8 @@ def analyse_ops_with_multi_thread(tree):
     op_counter = {}
     for op_name in tree.op_set:
 
-        start_times = [op.start for op in tree.nodes if op.text == op_name and op.is_op()]
-        end_times = [op.end for op in tree.nodes if op.text == op_name and op.is_op()]
+        start_times = [op.start for op in tree.nodes if op.is_op and op.op_name == op_name]
+        end_times = [op.end for op in tree.nodes if op.is_op and op.op_name == op_name]
 
         start_time_idx = 0
         end_time_idx = 0
@@ -46,7 +46,7 @@ def analyse_ops_with_multi_thread(tree):
 
 def show_op_list(tree):
     for node in tree.nodes:
-        if node.is_op():
+        if node.is_op:
             print("{text:<40s}: time_cost = {time_cost:<8d} ms,  start = {start:<12d},  end = {end:<12d}".format(
                 text=node.text, time_cost=node.time_cost, start=node.start, end=node.end
             ))
