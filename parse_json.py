@@ -173,8 +173,6 @@ def maybe_op(node):
 
 
 def setup_op(root):
-    if "grad" in root.text:
-        return
 
     if maybe_op(root):
         root.is_op = True
