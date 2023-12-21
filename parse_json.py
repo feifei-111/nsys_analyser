@@ -5,7 +5,7 @@ class Node:
     def __init__(self, nvtx_event):
         start = nvtx_event.get("Timestamp", None)
         end = nvtx_event.get("EndTimestamp", None)
-        text = nvtx_event.get("Text", None)
+        text = nvtx_event.get("Text", "")
         thread = nvtx_event["GlobalTid"]
         self.start = int(start) if start is not None else None
         self.end = int(end) if end is not None else None
@@ -66,13 +66,13 @@ class Tree:
         self.end = self.trees[self.main_thread][-1].end
         for root in self.main_roots:
             setup_op(root)
-        for roots in self.traversal_sub_threads():
+        for roots in self.traversal_sub_threads_root_list():
             for root in roots:
                 setup_op(root)
 
         self.op_set = set(node.op_name for node in self.nodes if node.is_op)
 
-    def traversal_all(self):
+    def traversal_all_threads_root_list(self):
         def inner():
             yield self.main_roots
             for k,v in self.trees.items():
@@ -80,7 +80,7 @@ class Tree:
                     yield v
         return inner()
 
-    def traversal_sub_threads(self):
+    def traversal_sub_threads_root_list(self):
         def inner():
             for k,v in self.trees.items():
                 if k != self.main_thread:
@@ -173,10 +173,13 @@ def maybe_op(node):
 
 
 def setup_op(root):
+    if "grad" in root.text:
+        return
+
     if maybe_op(root):
         root.is_op = True
         if maybe_dynamic_op(root):
-            root.op_name = root.text.replace(" dygraph", "").replace(" pybind_imperative_func", "").replace(" pybind_patch_func", "")
+            root.op_name = root.text.replace(" dygraph", "").replace(" pybind_imperative_func", "").replace(" pybind_patch_func", "") + "    [D]"
         elif is_pir_op(root):
             root.op_name = root.text.replace("pd_op.", "")
         else:

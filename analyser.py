@@ -48,3 +48,13 @@ def show_op_list(tree):
     for node in tree.nodes:
         if node.is_op:
             print(str(node))
+
+
+def analyse_interpreter_run(tree):
+    main_roots = tree.main_roots
+    for root in main_roots:
+        interpreter_nodes = root.find_all("interpreter_core_run")
+        iterpreter_time_cost = sum(node.time_cost for node in interpreter_nodes)
+        print(f"Graph Number:           {len(interpreter_nodes)}")
+        print(f"Interpreter Run Ratio:  {iterpreter_time_cost / tree.time_cost * 100:.2f}%")
+    
