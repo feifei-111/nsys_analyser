@@ -1,5 +1,6 @@
 from .utils import DefaultDict as ddict
 from .utils import line_printer, LINE_WIDTH, sort_on_values
+from .tree import TraceProcessNode
 
 
 def analyse_op_time_cost(tree):
@@ -51,6 +52,16 @@ def analyse_op_kernel_time_cost(tree):
         if op.is_op:
             op_kernel_time_cost[op.op_name] += op.kernel_time()
     for k, v in sort_on_values(op_kernel_time_cost):
+        print("{k:<40s}:  kernel_cost = {kernel_cost:<10f} ms".format(k=k, kernel_cost= v / 1000000))
+
+
+def analyse_kernel_time_cost(tree):
+    kernel_time_cost = ddict(0)
+    for node in tree.nodes:
+        if isinstance(node, TraceProcessNode) and node.related is not None:
+            kernel = node.related
+            kernel_time_cost[kernel.kernel_name] += kernel.time_cost
+    for k, v in sort_on_values(kernel_time_cost):
         print("{k:<40s}:  kernel_cost = {kernel_cost:<10f} ms".format(k=k, kernel_cost= v / 1000000))
 
 

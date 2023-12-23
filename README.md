@@ -14,9 +14,7 @@ assert len(sys.argv) > 2
 json_path = sys.argv[1]
 log_path = sys.argv[2]
 savedStdout = sys.stdout
-
 tree = create_tree(json_path, target_step, "forward")
-
 with open(log_path, "w") as file:
     sys.stdout = file
     base_name = os.path.basename(log_path)
@@ -37,6 +35,9 @@ with open(log_path, "w") as file:
 
     with line_printer(f"op status"):
         analyse_op_time_cost(tree)
+
+    with line_printer(f"kernel status"):
+        analyse_kernel_time_cost(tree)
 
     with line_printer(f"op's kernel status"):
         analyse_op_kernel_time_cost(tree)

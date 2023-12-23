@@ -74,9 +74,13 @@ class CudaNode(Node):
         self.cuda_action = cuda_event[self.tag]
         if self.correlationId == 0:
             self.type = -1
+    
+    @property
+    def kernel_name(self):
+        return self.text if self.text is not None else self.tag
 
     def to_string(self):
-        return "{text:<35s}: time_cost = {cost:<8s} us, start = {start:<10d}, end = {end:<10d}".format(text=self.text if self.text is not None else self.tag, start=self.start, end=self.end, cost=str(self.time_cost/1000))
+        return "{text:<35s}: time_cost = {cost:<8s} us, start = {start:<10d}, end = {end:<10d}".format(text=self.kernel_name, start=self.start, end=self.end, cost=str(self.time_cost/1000))
 
 
 class CpuNode(Node):
@@ -110,6 +114,11 @@ class CpuNode(Node):
         if checker(self):
             return True
         return any(child.has(checker) for child in self.children)
+
+    def traversal(self):
+        yield self
+        for child in self.children:
+            yield from child.traversal()
 
     def time_under(self, father):
         return father.start < self.start and father.end > self.end
