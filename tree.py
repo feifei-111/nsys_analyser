@@ -80,7 +80,7 @@ class CudaNode(Node):
         return self.text if self.text is not None else self.tag
 
     def to_string(self):
-        return "{text:<35s}: time_cost = {cost:<8s} us, start = {start:<10d}, end = {end:<10d}".format(text=self.kernel_name, start=self.start, end=self.end, cost=str(self.time_cost/1000))
+        return "{text:<35s}:  time_cost = {cost:<8s} us,  start = {start:<10d},  end = {end:<10d}".format(text=self.kernel_name, start=self.start, end=self.end, cost=str(self.time_cost/1000))
 
 
 class CpuNode(Node):
@@ -157,7 +157,7 @@ class TraceProcessNode(CpuNode):
 
     def to_string(self):
         if self.related is None:
-            return "{text:<35s}: time_cost = {cost:<8s} us, start = {start:<10d}, end = {end:<10d}, correlationId = {correlationId:<10d}".format(text=self.text, start=self.start, end=self.end, cost=str(self.time_cost/1000), correlationId=self.correlationId)
+            return "{text:<35s}:  time_cost = {cost:<8s} us,  start = {start:<10d},  end = {end:<10d}, correlationId = {correlationId:<10d}".format(text=self.text, start=self.start, end=self.end, cost=str(self.time_cost/1000), correlationId=self.correlationId)
         else:
             return "=>  " + str(self.related)
 
@@ -177,7 +177,7 @@ class NvtxNode(CpuNode):
             self.type = -1
 
     def to_string(self):
-        return "{text:<35s}: time_cost = {cost:<8s} us, start = {start:<10d}, end = {end:<10d}".format(text=self.text, start=self.start, end=self.end, cost=str(self.time_cost/1000))
+        return "{text:<35s}:  time_cost = {cost:<8s} us,  start = {start:<10d},  end = {end:<10d}".format(text=self.text, start=self.start, end=self.end, cost=str(self.time_cost/1000))
 
     def set_op(self):
         ret = set()

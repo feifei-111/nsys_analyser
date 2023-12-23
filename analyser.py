@@ -57,12 +57,14 @@ def analyse_op_kernel_time_cost(tree):
 
 def analyse_kernel_time_cost(tree):
     kernel_time_cost = ddict(0)
+    kernel_count = ddict(0)
     for node in tree.nodes:
         if isinstance(node, TraceProcessNode) and node.related is not None:
             kernel = node.related
             kernel_time_cost[kernel.kernel_name] += kernel.time_cost
+            kernel_count[kernel.kernel_name] += 1
     for k, v in sort_on_values(kernel_time_cost):
-        print("{k:<40s}:  kernel_cost = {kernel_cost:<10f} ms".format(k=k, kernel_cost= v / 1000000))
+        print("{k:<40s}:  kernel_cost = {kernel_cost:<10f} ms,  count = {kernel_count:<5d}".format(k=k, kernel_cost= v / 1000000, kernel_count= kernel_count[k]))
 
 
 def show_op_list(tree):
@@ -73,7 +75,8 @@ def show_op_list(tree):
 
 def show_kernel_list(tree):
     for node in tree.nodes:
-        for kernel in node.kernels():
+        if isinstance(node, TraceProcessNode) and node.related is not None:
+            kernel = node.related
             print(str(kernel))
 
 
