@@ -177,7 +177,7 @@ def setup_op(root):
     if maybe_op(root):
         root.is_op = True
         if maybe_dynamic_op(root):
-            root.op_name = root.text.replace(" dygraph", "").replace(" pybind_imperative_func", "").replace(" pybind_patch_func", "") + "    [D]"
+            root.op_name = "[D]  " + root.text.replace(" dygraph", "").replace(" pybind_imperative_func", "").replace(" pybind_patch_func", "")
         elif is_pir_op(root):
             root.op_name = root.text.replace("pd_op.", "")
         else:
