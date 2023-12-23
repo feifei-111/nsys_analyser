@@ -2,7 +2,7 @@ from .utils import DefaultDict as ddict
 from .utils import line_printer, LINE_WIDTH, sort_on_values
 
 
-def analyse_ops_with_multi_thread(tree):
+def analyse_op_time_cost(tree):
     op_time_cost = {}
     op_counter = {}
     for op_name in tree.op_set:
@@ -38,16 +38,32 @@ def analyse_ops_with_multi_thread(tree):
         op_time_cost[op_name] = total_time_cost
         op_counter[op_name] = len(start_times)
 
-    print("{k:<40s}: time_cost = {v:<10f} ms".format(k="total", v=tree.time_cost / 1000000))
+    print("{k:<40s}:  time_cost = {v:<10f} ms".format(k="total", v=tree.time_cost / 1000000))
     print("-" * LINE_WIDTH)
     for k, v in sort_on_values(op_time_cost):
-        print("{k:<40s}: time_cost = {v:<10f} ms,  count = {count:<5d},  {ratio:.2f}%".format(count=op_counter[k], k=k, v=v / 1000000, ratio=v / tree.time_cost * 100))
+        print("{k:<40s}:  time_cost = {v:<10f} ms,  count = {count:<5d},  {ratio:.2f}%".format(count=op_counter[k], k=k, v=v / 1000000, ratio=v / tree.time_cost * 100))
+
+
+
+def analyse_op_kernel_time_cost(tree):
+    op_kernel_time_cost = ddict(0)
+    for op in tree.nodes:
+        if op.is_op:
+            op_kernel_time_cost[op.op_name] += op.kernel_time()
+    for k, v in sort_on_values(op_kernel_time_cost):
+        print("{k:<40s}:  kernel_cost = {kernel_cost:<10f} ms".format(k=k, kernel_cost= v / 1000000))
 
 
 def show_op_list(tree):
     for node in tree.nodes:
         if node.is_op:
             print(str(node))
+
+
+def show_kernel_list(tree):
+    for node in tree.nodes:
+        for kernel in node.kernels():
+            print(str(kernel))
 
 
 def analyse_interpreter_run(tree):

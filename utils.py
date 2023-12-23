@@ -23,7 +23,7 @@ class DefaultDict:
     def __setitem__(self, key, value):
         self.dict[key] = value
     
-    def has(key):
+    def has(self, key):
         return key in self.dict
 
     def keys(self):
@@ -37,12 +37,12 @@ class DefaultDict:
 
 
 @contextmanager
-def line_printer(title):
+def line_printer(title, mark="="):
     name_len = (len(title) + 8) // 2 * 2
     format_str = "{left}{title:^" + str(name_len) + "s}{right}"
-    print(format_str.format(left="=" * ((LINE_WIDTH - name_len) // 2), title=title, right="=" * ((LINE_WIDTH - name_len) // 2)))
+    print(format_str.format(left=mark * ((LINE_WIDTH - name_len) // 2), title=title, right=mark * ((LINE_WIDTH - name_len) // 2)))
     yield
-    print("=" * LINE_WIDTH + "\n")
+    print(mark * LINE_WIDTH + "\n")
 
 
 def sort_on_values(dict_, key=None):

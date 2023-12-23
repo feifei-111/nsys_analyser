@@ -2,21 +2,51 @@
 
 
 ```py
-import sys
-from nsys_analyser.parse_json import create_nodes, create_tree
-from nsys_analyser.analyser import analyse_ops_with_multi_thread, show_op_list
+import sys, os
+from nsys_analyser.parse_json import create_tree
+from nsys_analyser.analyser import *
 from nsys_analyser.utils import line_printer
 
 
-if __name__ == "__main__":
-    target_step = "15"
+target_step = "55"
 
-    nodes = create_nodes("xxxxx.json")
-    tree = create_tree(nodes, target_step, filter=lambda x: x.text == "llama")
+assert len(sys.argv) > 2
+json_path = sys.argv[1]
+log_path = sys.argv[2]
+savedStdout = sys.stdout
 
-    with line_printer("llama op status"):
-        analyse_ops_with_multi_thread(tree)
+tree = create_tree(json_path, target_step, "forward")
 
-    with line_printer("llama op list"):
+with open(log_path, "w") as file:
+    sys.stdout = file
+    base_name = os.path.basename(log_path)
+
+    under_line_count = 0
+    for i in range(len(base_name)):
+        idx = len(base_name) - i - 1
+        if base_name[idx] == "_":
+            under_line_count += 1
+            if under_line_count == 2:
+                print(base_name[0:idx])
+                print(base_name[idx:])
+                break
+
+    analyse_interpreter_run(tree)
+
+    print("\n")
+
+    with line_printer(f"op status"):
+        analyse_op_time_cost(tree)
+
+    with line_printer(f"op's kernel status"):
+        analyse_op_kernel_time_cost(tree)
+
+    with line_printer(f"op list"):
         show_op_list(tree)
+
+    with line_printer(f"op list"):
+        show_kernel_list(tree)
+
+
+sys.stdout = savedStdout
 ```
