@@ -185,19 +185,20 @@ class NvtxNode(CpuNode):
             ret.add(self._mark_as_op())
         else:
             for child in self.children:
-                try:
-                    ret.update(child.set_op())
-                except:
-                    breakpoint()
+                ret.update(child.set_op())
         return ret
 
     def _maybe_op(self):
-        other_ops = ("StreamSafeCUDAAllocator::Free", "BufferedReader:MemoryCopy")
+        def is_other_op(text):
+            other_ops = ("StreamSafeCUDAAllocator::Free", "BufferedReader:MemoryCopy")
+            other_op_prefix = ("GpuMemcpyAsync:")
+            return text in other_ops or any(text.startswith(prefix) for prefix in other_op_prefix)
+
         return (
             (len(self.find_child("compute")) == 1 and len(self.find_child("infer_shape")) == 1) or
             ("pd_op." in self.text) or
             ("dygraph" in self.text or "pybind_imperative_func" in self.text or "pybind_patch_func" in self.text) or
-            (self.text in other_ops)
+            (is_other_op(self.text))
         )
 
     def _mark_as_op(self):
