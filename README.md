@@ -43,3 +43,8 @@ with open(log_path, "w") as file:
 
 sys.stdout = savedStdout
 ```
+
+Build Logs Like:
+<img width="915" alt="image" src="https://github.com/feifei-111/nsys_analyser/assets/79986504/057dbd4c-212e-4e12-993d-d4597460547f">
+
+<img width="1060" alt="image" src="https://github.com/feifei-111/nsys_analyser/assets/79986504/9e4cbd89-a45c-4cd3-95a2-2990a053638a">
