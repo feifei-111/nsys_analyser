@@ -13,8 +13,12 @@ def create_nodes(json_path):
             if "Type" in nsys_json:
                 event_type = nsys_json["Type"]
                 if event_type in NEEDED_EVENT:
-                    node = Node.create_from(nsys_json)
-                    if node.type == -1:
+                    try:
+                        node = Node.create_from(nsys_json)
+                    except Exception as e:
+                        print(f"Create Node Failed\n    Json: {nsys_json}\n    Error: {e}\n")
+                        raise e
+                    if node.skip:
                         continue
                     if isinstance(node, CudaNode):
                         cudas.append(node)
@@ -42,7 +46,8 @@ def filter_nodes(nodes, filter_):
         
         if node.start < stop_time:
             stop_idx = idx
-
+    if start_idx is None:
+        return []
     return nodes[start_idx :stop_idx]
 
 
@@ -51,13 +56,11 @@ def fill_tree_nodes(nodes, stacks, trees):
         stack = stacks[node.thread]
         while len(stack) > 0 and not node.time_under(stack[-1]):
             stack.pop()
-
         if len(stack) == 0:
             trees[node.thread].append(node)
         else:
             node.parent = stack[-1]
             stack[-1].children.append(node)
-
         stack.append(node)
 
 
@@ -69,6 +72,9 @@ def create_tree(json_path, *filters):
     stacks = ddict(lambda: [])
     trees = ddict(lambda: [])
     cpu_nodes = cpus
+
+    main_thread = None
+
     for idx, f in enumerate(filters):
         if isinstance(f, str):
             filter_ = lambda x: x.text == f
@@ -77,15 +83,12 @@ def create_tree(json_path, *filters):
         cpu_nodes = filter_nodes(cpu_nodes, filter_)
         if idx == 0:
             main_thread = cpu_nodes[0].thread
+    
+    if main_thread is None:
+        main_thread = cpus[0].thread
 
     # build tree structure
     fill_tree_nodes(cpu_nodes, stacks, trees)
-
-    # set ops
-    op_name_set = set()
-    for k, roots in trees.items():
-        for root in roots:
-            op_name_set.update(root.set_op())
 
     # set correlation nodes
     correlationId_map = ddict(lambda: [])
@@ -96,7 +99,7 @@ def create_tree(json_path, *filters):
         if isinstance(node, TraceProcessNode):
             if correlationId_map.has(node.correlationId):
                 related = correlationId_map[node.correlationId][0]
-                correlationId_map[node.correlationId].pop(0)
+                # correlationId_map[node.correlationId].pop(0)
                 node.related = related
                 related.related = node
                 if related.tag == "kernel":
@@ -104,5 +107,7 @@ def create_tree(json_path, *filters):
             else:
                 node.related = None
             node.text = data[node.name]
-    return Tree(trees=trees, datas=datas, nodes=cpu_nodes, op_set=op_name_set, main_thread=main_thread)
+        elif isinstance(node, NvtxNode) and node.text == "":
+            node.text = data[node.textid]
+    return Tree(trees=trees, datas=datas, nodes=cpu_nodes, main_thread=main_thread)
 

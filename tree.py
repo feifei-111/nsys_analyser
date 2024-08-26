@@ -3,11 +3,14 @@ EVENT_TYPE_NAME ={
     47: 'TraceProcessEvent',
     48: 'TraceProcessEvent',    # call cuda api in cpu
     49: 'DiagnosticEvent',
-    59: 'NvtxEvent',
+    59: 'NvtxEvent',            # if NvtxEvent is 59, it has "TextId"
+    60: 'NvtxEvent',            # if NvtxEvent is 60, it has "Text"
     79: 'CudaEvent',            # kernel
     80: 'CudaEvent',            # memcpy/memset
     106: 'CudaEvent',           # sync
-    127: 'CudaEvent'            # cudaEventRecord
+    127: 'CudaEvent',           # cudaEventRecord
+
+    31: 'CompositeEvent',       # call libxx.so api, e.g. libcublasLt.so, libc-2.31.so, looks like a stack
 }
 
 NEEDED_EVENT = {
@@ -20,6 +23,9 @@ class Node:
         self.json = event_json
         self.type = event_json['Type']
         self.event_name = EVENT_TYPE_NAME[self.type]
+        self.skip = False
+        self.start = None
+        self.end = None
 
     @staticmethod
     def create_from(event_json):
@@ -73,7 +79,7 @@ class CudaNode(Node):
 
         self.cuda_action = cuda_event[self.tag]
         if self.correlationId == 0:
-            self.type = -1
+            self.skip = True
     
     @property
     def kernel_name(self):
@@ -125,9 +131,6 @@ class CpuNode(Node):
 
     def under(self, father):
         return father.thread == self.thread and self.time_under(father)
-    
-    def set_op(self):
-        return set()
 
     def kernels(self):
         if self._kernels is None:
@@ -142,18 +145,19 @@ class TraceProcessNode(CpuNode):
     def __init__(self, event_json):
         super().__init__(event_json)
         trace_event = event_json["TraceProcessEvent"]
-        self.start = int(trace_event["startNs"])
-        self.end = int(trace_event["endNs"])
         self.correlationId = trace_event["correlationId"]
         self.thread = trace_event["globalTid"]
-        self.text = None
-        self.children = tuple()
+        self.text = ""
+        self.children = []
         self.parent = None
         self.related = None
         self.name = int(trace_event["name"])
-        
         if self.correlationId == 0:
-            self.type = -1
+            self.start = 0
+            self.skip = False
+        else:
+            self.start = int(trace_event["startNs"])
+        self.end = int(trace_event["endNs"])
 
     def to_string(self):
         if self.related is None:
@@ -169,47 +173,22 @@ class NvtxNode(CpuNode):
         self.start = int(nvtx_event["Timestamp"])
         self.end = int(nvtx_event["EndTimestamp"])
         self.thread = nvtx_event["GlobalTid"]
-        self.text = nvtx_event.get("Text", "")
+        if self.type == 59:
+            self.textid = int(nvtx_event.get("TextId", -1))
+            self.text = ""
+            if self.textid == -1:
+                self.skip = True
+        elif self.type == 60:
+            self.text = nvtx_event.get("Text", "")
+            if self.text == "":
+                self.skip = True
         self.children = []
         self.parent = None
 
-        if self.text == "":
-            self.type = -1
+        self.domain = nvtx_event["DomainId"]  # different domain will show block in different row in nsight graph, e.g. DomainId=1 means TensorRT
 
     def to_string(self):
         return "{text:<35s}:  time_cost = {cost:<8s} us,  start = {start:<10d},  end = {end:<10d}".format(text=self.text, start=self.start, end=self.end, cost=str(self.time_cost/1000))
-
-    def set_op(self):
-        ret = set()
-        if self._maybe_op():
-            ret.add(self._mark_as_op())
-        else:
-            for child in self.children:
-                ret.update(child.set_op())
-        return ret
-
-    def _maybe_op(self):
-        def is_other_op(text):
-            other_ops = ("StreamSafeCUDAAllocator::Free", "BufferedReader:MemoryCopy")
-            other_op_prefix = ("GpuMemcpyAsync:")
-            return text in other_ops or any(text.startswith(prefix) for prefix in other_op_prefix)
-
-        return (
-            (len(self.find_child("compute")) == 1 and len(self.find_child("infer_shape")) == 1) or
-            ("pd_op." in self.text) or
-            ("dygraph" in self.text or "pybind_imperative_func" in self.text or "pybind_patch_func" in self.text) or
-            (is_other_op(self.text))
-        )
-
-    def _mark_as_op(self):
-        self.is_op = True
-        if "dygraph" in self.text or "pybind_imperative_func" in self.text or "pybind_patch_func" in self.text:
-            self.op_name = "[D]  " + self.text.replace(" dygraph", "").replace(" pybind_imperative_func", "").replace(" pybind_patch_func", "")
-        elif "pd_op." in self.text:
-            self.op_name = self.text.replace("pd_op.", "")
-        else:
-            self.op_name = self.text
-        return self.op_name
 
 
 class Tree:
@@ -217,7 +196,6 @@ class Tree:
         self.trees = kwargs["trees"]
         self.datas = kwargs["datas"]
         self.nodes = kwargs["nodes"]
-        self.op_set = kwargs["op_set"]
         self.main_thread = kwargs["main_thread"]
 
         self.main_roots = self.trees[self.main_thread]
@@ -232,4 +210,3 @@ class Tree:
         for k, roots in self.trees.items():
             for root in roots:
                 yield root
-
