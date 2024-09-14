@@ -7,44 +7,40 @@ nsys export xxxxx.nsys-rep --type json --force-overwrite true -o xxxxx.json
 
 
 ```py
-import sys, os
-from nsys_analyser.parse_json import create_tree
-from nsys_analyser.analyser import *
-from nsys_analyser.utils import line_printer
+from nsys_analyser import NodeFilter, Report, ReportGuard, create_tree
+from nsys_analyser.analyser import (
+    analyse_kernel_ratio,
+    analyse_kernel_time_cost,
+)
 
+# create call stack tree, with filters to local your target (use nvtx to capture)
+json_path = "./example.json"
+tree = create_tree(json_path, NodeFilter.text_filter("step 0"))
 
-target_step = "55"
+# just print
+analyse_kernel_ratio(tree)
+analyse_kernel_time_cost(tree)
 
-assert len(sys.argv) > 2
+# dump to file
+report = Report("./log.log")
+with ReportGuard(report):
+    analyse_kernel_ratio(tree)
+    analyse_kernel_time_cost(tree)
 
-json_path = sys.argv[1]
-log_path = sys.argv[2]
-
-savedStdout = sys.stdout
-tree = create_tree(json_path, target_step, "forward")
-
-with open(log_path, "w") as file:
-    sys.stdout = file
-
-    analyse_interpreter_run(tree)
-    print("\n")
-
-    with line_printer(f"op status"):
-        analyse_op_time_cost(tree)
-
-    with line_printer(f"kernel status"):
-        analyse_kernel_time_cost(tree)
-
-    with line_printer(f"kernel list"):
-        show_kernel_list(tree)
-
-    with line_printer(f"op list"):
-        show_op_list(tree)
-
-sys.stdout = savedStdout
 ```
 
 Build Logs Like:
-<img width="915" alt="image" src="https://github.com/feifei-111/nsys_analyser/assets/79986504/057dbd4c-212e-4e12-993d-d4597460547f">
+```
+threads: 2, main_thread_trees: 18
 
-<img width="1060" alt="image" src="https://github.com/feifei-111/nsys_analyser/assets/79986504/9e4cbd89-a45c-4cd3-95a2-2990a053638a">
+=============================================    kernel_ratio    =============================================
+total_time: 6075.279597 ms, total_kernel_time: 0.017472  , kernel_ratio: 0.00
+==============================================================================================================
+
+===========================================    kernel_time_cost    ===========================================
+total_kernel_time                        0.013966   ms
+--------------------------------------------------------------------------------------------------------------
+sync                                    :  kernel_cost = 0.008014   ms,  count = 1    , ratio = 57.38
+memcpy                                  :  kernel_cost = 0.005952   ms,  count = 1    , ratio = 42.62
+==============================================================================================================
+```

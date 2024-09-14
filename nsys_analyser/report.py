@@ -2,7 +2,7 @@ from contextlib import contextmanager
 
 from .utils import Singleton
 
-LINE_WIDTH = 100
+LINE_WIDTH = 110
 REPORT = None
 LOG_HOOK = print
 

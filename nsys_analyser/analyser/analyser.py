@@ -35,15 +35,18 @@ def analyse_kernel_time_cost(tree):
 
     with ReportTitle("kernel_time_cost"):
         log(
-            "{k:<40s}:  time_cost = {v:<10f} ms".format(
+            "{k:<40s} {v:<10f} ms".format(
                 k="total_kernel_time", v=total_time / 1000000
             )
         )
         log("-" * LINE_WIDTH)
         for k, v in sort_on_values(kernel_time_cost):
             log(
-                "{k:<40s}:  kernel_cost = {kernel_cost:<10f} ms,  count = {kernel_count:<5d}".format(
-                    k=k, kernel_cost=v / 1000000, kernel_count=kernel_count[k]
+                "{k:<40s}:  kernel_cost = {kernel_cost:<10f} ms,  count = {kernel_count:<5d}, ratio = {ratio:<.2f}".format(
+                    k=k,
+                    kernel_cost=v / 1000000,
+                    kernel_count=kernel_count[k],
+                    ratio=v / total_time * 100,
                 )
             )
 

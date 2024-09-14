@@ -4,15 +4,16 @@ from nsys_analyser.analyser import (
     analyse_kernel_time_cost,
 )
 
-json_path = "./test_memcpy.json"
+# create call stack tree, with filters to local your target (use nvtx to capture)
+json_path = "./example.json"
 tree = create_tree(json_path, NodeFilter.text_filter("step 0"))
-
-report = Report("./log.log")
 
 # just print
 analyse_kernel_ratio(tree)
+analyse_kernel_time_cost(tree)
 
 # dump to file
+report = Report("./log.log")
 with ReportGuard(report):
     analyse_kernel_ratio(tree)
     analyse_kernel_time_cost(tree)
