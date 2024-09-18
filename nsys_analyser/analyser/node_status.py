@@ -2,6 +2,11 @@ def nodes_time_cover(nodes):
     start_times = [node.start for node in nodes]
     end_times = [node.end for node in nodes]
 
+    start_times.sort()
+    end_times.sort()
+
+    range_time = end_times[-1] - start_times[0]
+
     start_time_idx = 0
     end_time_idx = 0
 
@@ -39,4 +44,4 @@ def nodes_time_cover(nodes):
                 last_start = None
             end_time_idx += 1
 
-    return total_time_cost
+    return total_time_cost, range_time

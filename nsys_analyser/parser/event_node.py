@@ -24,16 +24,6 @@ class Node:
         self.start = None
         self.end = None
 
-    @staticmethod
-    def create_from(event_json, data):
-        name_node_map = {
-            "NvtxEvent": NvtxNode,
-            "TraceProcessEvent": TraceProcessNode,
-            "CudaEvent": CudaNode,
-        }
-        event_name = EVENT_TYPE_NAME[event_json['Type']]
-        return name_node_map[event_name](event_json, data)
-
     @property
     def time_cost(self):
         return self.end - self.start
@@ -44,12 +34,6 @@ class Node:
     def __repr__(self):
         return f"[{self.event_name}]  {self.to_string()}"
 
-    def pprint(self, level=-1, prefix=""):
-        print(prefix + self.__repr__())
-        if isinstance(self, NvtxNode) and level != 0:
-            for child in self.children:
-                child.pprint(level=level - 1, prefix=prefix + "    ")
-
 
 class CudaNode(Node):
     def __init__(self, event_json, data):
@@ -59,12 +43,14 @@ class CudaNode(Node):
         self.end = int(cuda_event["endNs"])
         self.text = None
         self.correlationId = cuda_event["correlationId"]
-        self.event_class = cuda_event["eventClass"]
+        self.deviceID = int(cuda_event["deviceId"])
+        self.event_class = int(cuda_event["eventClass"])
         self.related = None
 
         if self.type == 79:
             self.tag = "kernel"
             self.name = int(cuda_event["kernel"]["shortName"])
+            self.text = data[self.name]
         elif self.type == 80:
             if "memcpy" in cuda_event:
                 self.tag = "memcpy"
@@ -77,17 +63,24 @@ class CudaNode(Node):
         else:
             raise RuntimeError("Unknown cuda event")
 
+        if self.text is None:
+            self.text = self.tag
+
         self.cuda_action = cuda_event[self.tag]
         if self.correlationId == 0:
             self.skip = True
 
-    @property
-    def kernel_name(self):
-        return self.text if self.text is not None else self.tag
+        if self.event_class != 0:
+            # 1: memcpy
+            # 2: memset
+            # 3: kernel
+            # 4: (unknow)
+            # 5: sync
+            pass
 
     def to_string(self):
         return "{text:<35s}:  time_cost = {cost:<8s} us,  start = {start:<10d},  end = {end:<10d}".format(
-            text=self.kernel_name,
+            text=self.text,
             start=self.start,
             end=self.end,
             cost=str(self.time_cost / 1000),
@@ -98,6 +91,7 @@ class CpuNode(Node):
     def __init__(self, event_json, data):
         super().__init__(event_json, data)
         self._kernels = None
+        self.related = None
 
     def find_child(self, checker):
         if isinstance(checker, str):
@@ -137,15 +131,18 @@ class CpuNode(Node):
         if self._kernels is None:
             self._kernels = [
                 x.related
-                for x in self.find_all(
-                    lambda x: isinstance(x, TraceProcessNode)
-                )
-                if x.related is not None
+                for x in self.find_all(lambda x: x.related is not None)
             ]
         return self._kernels
 
     def kernel_time(self):
         return sum(x.time_cost for x in self.kernels())
+
+    def pprint(self, level=-1, prefix=""):
+        print(prefix + self.__repr__())
+        if isinstance(self, NvtxNode) and level != 0:
+            for child in self.children:
+                child.pprint(level=level - 1, prefix=prefix + "    ")
 
 
 class TraceProcessNode(CpuNode):
@@ -156,27 +153,27 @@ class TraceProcessNode(CpuNode):
         self.thread = trace_event["globalTid"]
         self.children = []
         self.parent = None
-        self.related = None
         self.name = int(trace_event["name"])
         self.text = data[self.name]
-        if self.correlationId == 0:
-            self.start = 0
-            self.skip = False
-        else:
-            self.start = int(trace_event["startNs"])
+        self.start = int(trace_event["startNs"])
         self.end = int(trace_event["endNs"])
+        self.event_class = int(trace_event["eventClass"])
+
+        if self.event_class != 0:
+            # epoll, TLS, futex
+            pass
+
+        if self.correlationId == 0:
+            self.skip = True
 
     def to_string(self):
-        if self.related is None:
-            return "{text:<35s}:  time_cost = {cost:<8s} us,  start = {start:<10d},  end = {end:<10d}, correlationId = {correlationId:<10d}".format(
-                text=self.text,
-                start=self.start,
-                end=self.end,
-                cost=str(self.time_cost / 1000),
-                correlationId=self.correlationId,
-            )
-        else:
-            return "=>  " + str(self.related)
+        return "{text:<35s}:  time_cost = {cost:<8s} us,  start = {start:<10d},  end = {end:<10d}, correlationId = {correlationId:<10d}".format(
+            text=self.text,
+            start=self.start,
+            end=self.end,
+            cost=str(self.time_cost / 1000),
+            correlationId=self.correlationId,
+        )
 
 
 class NvtxNode(CpuNode):
@@ -211,3 +208,15 @@ class NvtxNode(CpuNode):
             end=self.end,
             cost=str(self.time_cost / 1000),
         )
+
+
+NAME_NODE_MAP = {
+    "NvtxEvent": NvtxNode,
+    "TraceProcessEvent": TraceProcessNode,
+    "CudaEvent": CudaNode,
+}
+
+
+def create_node(event_json, data):
+    event_name = EVENT_TYPE_NAME[event_json['Type']]
+    return NAME_NODE_MAP[event_name](event_json, data)

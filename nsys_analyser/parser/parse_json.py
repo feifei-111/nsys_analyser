@@ -53,7 +53,7 @@ def create_nodes(json_path):
                 event_type = nsys_json["Type"]
                 if event_type in NEEDED_EVENT:
                     try:
-                        node = Node.create_from(nsys_json, datas[0]['data'])
+                        node = create_node(nsys_json, datas[0]['data'])
                     except Exception as e:
                         print(
                             f"Create Node Failed\n    Json: {nsys_json}\n    Error: {e}\n"
@@ -100,6 +100,21 @@ def fill_tree_nodes(nodes, stacks, trees):
         stack.append(node)
 
 
+def find_related(node, correlationId_map):
+    correlationId = node.correlationId
+    if correlationId_map.has(correlationId) and (
+        "Launch" in node.text or "Memcpy" in node.text
+    ):
+        candidates = correlationId_map[correlationId]
+        for idx, candidate in enumerate(candidates):
+            if candidate.start > node.start:
+                correlationId_map[correlationId].pop(idx)
+                return candidate
+        print(f"No correlated kernel: {node}")
+
+    return None
+
+
 def create_tree(json_path, *filters):
     # 1. read file and create nodes
     cpus, cudas, datas = create_nodes(json_path)
@@ -126,17 +141,12 @@ def create_tree(json_path, *filters):
 
     for node in cpu_nodes:
         if isinstance(node, TraceProcessNode):
-            if correlationId_map.has(node.correlationId):
-                related = correlationId_map[node.correlationId][0]
-                # correlationId_map[node.correlationId].pop(0)
+            related = find_related(node, correlationId_map)
+            if related is not None:
                 node.related = related
                 related.related = node
-                if related.tag == "kernel":
-                    related.text = data[related.name]
                 cuda_api_nodes.append(node)
                 cuda_kernel_nodes.append(related)
-            else:
-                node.related = None
 
     return Tree(
         trees=trees,

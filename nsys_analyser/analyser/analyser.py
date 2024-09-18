@@ -5,21 +5,27 @@ from .node_status import nodes_time_cover
 
 
 def analyse_kernel_ratio(tree):
-    total_time = 0
-    total_kernel_time = 0
+    total_ranged_time = 0
+    total_covered_time = 0
+    kernel_count = 0
     for root in tree.main_roots:
-        cover_time = nodes_time_cover(
-            [node for node in tree.cuda_kernel_nodes if node.time_under(root)]
-        )
-        total_kernel_time += cover_time
-        total_time += root.time_cost
+        target = [
+            node.related
+            for node in root.traversal()
+            if node.related is not None
+        ]
+        cover_time, ranged_time = nodes_time_cover(target)
+        total_covered_time += cover_time
+        total_ranged_time += ranged_time
+        kernel_count += len(target)
 
     with ReportTitle("kernel_ratio"):
         log(
-            "total_time: {total_time:<10f} ms, total_kernel_time: {total_kernel_time:<10f}, kernel_ratio: {ratio:<.2f}".format(
-                total_time=total_time / 1000000,
-                total_kernel_time=total_kernel_time / 1000000,
-                ratio=total_kernel_time / total_time * 100,
+            "ranged_time: {ranged_time:<10f} ms, kernel_covered: {kernel_covered:<10f}, kernel_count: {kernel_count:<4d}, ratio: {ratio:<.2f}".format(
+                ranged_time=total_ranged_time / 1000000,
+                kernel_covered=total_covered_time / 1000000,
+                ratio=total_covered_time / total_ranged_time * 100,
+                kernel_count=kernel_count,
             )
         )
 
@@ -29,9 +35,9 @@ def analyse_kernel_time_cost(tree):
     kernel_count = ddict(0)
     total_time = 0
     for kernel in tree.cuda_kernel_nodes:
-        kernel_time_cost[kernel.kernel_name] += kernel.time_cost
+        kernel_time_cost[kernel.text] += kernel.time_cost
         total_time += kernel.time_cost
-        kernel_count[kernel.kernel_name] += 1
+        kernel_count[kernel.text] += 1
 
     with ReportTitle("kernel_time_cost"):
         log(
