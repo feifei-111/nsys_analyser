@@ -4,7 +4,7 @@ from ..utils import sort_on_values
 from .node_status import nodes_time_cover
 
 
-def analyse_kernel_ratio(tree):
+def analyse_kernel_coverage(tree):
     total_ranged_time = 0
     total_covered_time = 0
     kernel_count = 0
@@ -19,7 +19,7 @@ def analyse_kernel_ratio(tree):
         total_ranged_time += ranged_time
         kernel_count += len(target)
 
-    with ReportTitle("kernel_ratio"):
+    with ReportTitle("KERNEL COVERAGE"):
         log(
             "ranged_time: {ranged_time:<10f} ms, kernel_covered: {kernel_covered:<10f}, kernel_count: {kernel_count:<4d}, ratio: {ratio:<.2f}".format(
                 ranged_time=total_ranged_time / 1000000,
@@ -30,16 +30,17 @@ def analyse_kernel_ratio(tree):
         )
 
 
-def analyse_kernel_time_cost(tree):
+def analyse_kernel_status(tree, device=0):
     kernel_time_cost = ddict(0)
     kernel_count = ddict(0)
     total_time = 0
     for kernel in tree.cuda_kernel_nodes:
-        kernel_time_cost[kernel.text] += kernel.time_cost
-        total_time += kernel.time_cost
-        kernel_count[kernel.text] += 1
+        if kernel.deviceID == device:
+            kernel_time_cost[kernel.text] += kernel.time_cost
+            total_time += kernel.time_cost
+            kernel_count[kernel.text] += 1
 
-    with ReportTitle("kernel_time_cost"):
+    with ReportTitle(f"KERNEL STATUS (DEVICE{device})"):
         log(
             "{k:<40s} {v:<10f} ms".format(
                 k="total_kernel_time", v=total_time / 1000000
@@ -58,6 +59,6 @@ def analyse_kernel_time_cost(tree):
 
 
 def analyse_kernel_list(tree):
-    with ReportTitle("kernel_list"):
+    with ReportTitle("KERNEL LIST"):
         for kernel in tree.cuda_kernel_nodes:
             log(str(kernel))

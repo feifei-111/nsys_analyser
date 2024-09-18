@@ -47,7 +47,7 @@ def ReportGuard(report):
 
 
 def create_title(title, mark="="):
-    name_len = (len(title) + 8) // 2 * 2
+    name_len = (len(title) + 6) // 2 * 2
     format_str = "{left}{title:^" + str(name_len) + "s}{right}"
     title_str = format_str.format(
         left=mark * ((LINE_WIDTH - name_len) // 2),
