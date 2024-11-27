@@ -1,3 +1,6 @@
+import functools
+from .node_status import nodes_time_cover
+
 EVENT_TYPE_NAME = {
     27: 'CommEvent',
     47: 'TraceProcessEvent',
@@ -90,8 +93,9 @@ class CudaNode(Node):
 class CpuNode(Node):
     def __init__(self, event_json, data):
         super().__init__(event_json, data)
-        self._kernels = None
         self.related = None
+        self._kernel_cover_time = None
+        self._kernel_range_time = None
 
     def find_child(self, checker):
         if isinstance(checker, str):
@@ -112,6 +116,17 @@ class CpuNode(Node):
             result.extend(child.find_all(checker))
         return result
 
+    def find_surface(self, checker):
+        if isinstance(checker, str):
+            return self.find_surface(lambda x: x.text == checker)
+        result = []
+        if checker(self):
+            result.append(self)
+        else:
+            for child in self.children:
+                result.extend(child.find_surface(checker))
+        return result
+
     def has(self, checker):
         if isinstance(checker, str):
             return self.has(lambda x: x.text == checker)
@@ -127,16 +142,29 @@ class CpuNode(Node):
     def under(self, father):
         return father.thread == self.thread and self.time_under(father)
 
+    @functools.lru_cache
     def kernels(self):
-        if self._kernels is None:
-            self._kernels = [
-                x.related
-                for x in self.find_all(lambda x: x.related is not None)
-            ]
-        return self._kernels
+        if self.related is not None:
+            return [self.related]
+        else:
+            kernels = []
+            for child in self.children:
+                kernels.extend(child.kernels())
+            return kernels
 
-    def kernel_time(self):
-        return sum(x.time_cost for x in self.kernels())
+    def kernel_cover_time(self):
+        if self._kernel_cover_time is None:
+            self._kernel_cover_time, self._kernel_range_time = nodes_time_cover(
+                self.kernels()
+            )
+        return self._kernel_cover_time
+
+    def kernel_ranged_time(self):
+        if self._kernel_range_time is None:
+            self._kernel_cover_time, self._kernel_range_time = nodes_time_cover(
+                self.kernels()
+            )
+        return self._kernel_range_time
 
     def pprint(self, level=-1, prefix=""):
         print(prefix + self.__repr__())

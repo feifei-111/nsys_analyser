@@ -48,3 +48,14 @@ def sort_on_values(dict_, key=None):
     if key is None:
         key = lambda x: -x[1]
     return sorted(dict_.items(), key=key)
+
+
+def target_events_checker(target_events=None):
+    if target_events is None:
+        return lambda node: True
+    elif isinstance(target_events, str):
+        return lambda node: node.text == target_events
+    elif isinstance(target_events, (list, tuple)):
+        return lambda node: node.text in target_events
+    else:
+        raise RuntimeError(f"Not Support {type(target_events)} to mark a event")
