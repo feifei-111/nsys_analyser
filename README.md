@@ -3,6 +3,9 @@
 export nsys json file:
 ```bash
 nsys export xxxxx.nsys-rep --type json --force-overwrite true -o xxxxx.json
+
+# for new version
+nsys export xxxx.nsys-rep --type=jsonlines --force-overwrite true -o xxxx.jsonl
 ```
 
 use this tool for analysing:

@@ -25,9 +25,10 @@ class Report:
 
         return hook
 
-    def __del__(self):
-        with open(self.file_path, "w") as f:
-            f.write(self.to_str())
+    def save(self):
+        if self.file_path:
+            with open(self.file_path, "w") as f:
+                f.write(self.to_str())
 
 
 @contextmanager
@@ -42,6 +43,7 @@ def ReportGuard(report):
         yield
     finally:
         if REPORT is not None:
+            REPORT.save()
             LOG_HOOK = old_log
         REPORT = old_REPORT
 

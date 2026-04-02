@@ -4,20 +4,21 @@ from nsys_analyser.analyser import (
     analyse_kernel_status,
 )
 
-json_path = "./example.json"
-
+json_path = "./xxx.json"
 # create call stack tree, with filters to local your target (use nvtx to capture)
 # (NodeFilter.text_filter need the full name of a nvtx event)
-tree = create_tree(json_path, NodeFilter.text_filter("step 0"))
+tree = create_tree(
+    json_path, NodeFilter.thread(775).first_text("run_batch:4142")
+)
 
 # use analyse tools, they print the result
 # you can add your analyser under dir `nsys_analyser/analyser`
 analyse_kernel_coverage(tree)
-analyse_kernel_status(tree, device=0)
+analyse_kernel_status(tree)
 
 # if you want dump to file, use `>` in bash
 # or use ReportGuard if you want dump results to different files
 report = Report("./log.log")
 with ReportGuard(report):
     analyse_kernel_coverage(tree)
-    analyse_kernel_status(tree, device=0)
+    analyse_kernel_status(tree)
