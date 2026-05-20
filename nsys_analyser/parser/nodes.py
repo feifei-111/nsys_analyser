@@ -57,7 +57,7 @@ class CudaNode(Node):
 class CpuNode(Node):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.related = None
+        self.related: list[CudaNode] = []
 
     def find_child(self, checker):
         if isinstance(checker, str):
@@ -108,8 +108,9 @@ class CpuNode(Node):
     def kernels(self) -> dict[int, list]:
         """Returns {device_id: [CudaNode, ...]}."""
         result: dict[int, list] = {}
-        if self.related is not None:
-            result.setdefault(self.related.deviceID, []).append(self.related)
+        if self.related:
+            for r in self.related:
+                result.setdefault(r.deviceID, []).append(r)
         else:
             for child in self.children:
                 for dev, nodes in child.kernels().items():

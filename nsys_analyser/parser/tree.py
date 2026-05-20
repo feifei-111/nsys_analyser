@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Generator, Optional, TypedDict
+from typing import Generator, TypedDict
 
 from ..utils import DefaultDict as ddict
 from .nodes import CpuNode, CudaNode, TraceProcessNode
@@ -109,18 +109,26 @@ def fill_tree_nodes(
 def find_related(
     node: TraceProcessNode,
     correlationId_map: ddict,
-) -> Optional[CudaNode]:
+) -> list[CudaNode]:
     cid = node.correlationId
-    if correlationId_map.has(cid) and (
-        "Launch" in node.text or "Memcpy" in node.text
-    ):
-        candidates = correlationId_map[cid]
-        for idx, candidate in enumerate(candidates):
-            if candidate.start > node.start:
-                correlationId_map[cid].pop(idx)
-                return candidate
-        print(f"No correlated kernel: {node}")
-    return None
+    if not correlationId_map.has(cid):
+        return []
+    if "Launch" not in node.text and "Memcpy" not in node.text:
+        return []
+
+    candidates = correlationId_map[cid]
+
+    if "GraphLaunch" in node.text:
+        matched = [c for c in candidates if c.start >= node.start]
+        correlationId_map[cid] = [c for c in candidates if c.start < node.start]
+        return matched
+
+    for idx, candidate in enumerate(candidates):
+        if candidate.start > node.start:
+            correlationId_map[cid].pop(idx)
+            return [candidate]
+    print(f"No correlated kernel: {node}")
+    return []
 
 
 def _detect_format(json_path: str) -> str:
@@ -208,11 +216,12 @@ def create_tree(json_path: str, filter) -> Tree:
             for node in nodes:
                 if isinstance(node, TraceProcessNode):
                     related = find_related(node, corr_map)
-                    if related is not None:
+                    if related:
                         node.related = related
-                        related.related = node
+                        for r in related:
+                            r.related = node
                         cuda_api_nodes.append(node)
-                        cuda_kernel_nodes.append(related)
+                        cuda_kernel_nodes.extend(related)
 
     return Tree(
         trees=trees,
